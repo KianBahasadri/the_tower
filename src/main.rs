@@ -2,6 +2,7 @@ use std::fs;
 use std::env;
 use std::path;
 use std::path::PathBuf;
+use std::io;
 use homedir;
 
 fn main() {
@@ -17,6 +18,7 @@ fn main() {
   match invocation_name {
     "seed.tower" => generate_tower(home_path, tower_path.to_owned()),
     "shift.tower" => shift_tower(tower_path.to_owned()),
+    "destroy.tower" => destroy_the_tower(tower_path),
     _ => no_response(args),
   }
 }
@@ -34,22 +36,27 @@ fn generate_tower(home_path: path::PathBuf, mut tower_path: path::PathBuf) {
   println!("A mighty tower appears before you, it reaches into the clouds and makes you feel insignificant with its might")
 }
 
-fn shift_tower(mut tower_path: PathBuf) {
-  for i in 1..5 {
-    let file_paths = fs::read_dir(&tower_path).unwrap();
+fn shift_tower(tower_path: PathBuf) {
+  let mut i = 5;
+  while i > 0 {
+    let mut current_floor = tower_path.to_owned();
+    for j in 1..i {
+      current_floor.push(format!("floor_{}", j));
+    }
+
+    let file_paths = fs::read_dir(&current_floor).unwrap();
     for file_path in file_paths {
       let file_path = file_path.unwrap();
       if !belongs_to_tower(file_path.path()) {
         let from = &file_path.path();
         let file_name = file_path.file_name();
-        let mut to = tower_path.to_path_buf();
+        let mut to = current_floor.to_path_buf();
         to.push(format!("floor_{}", i));
         to.push(file_name);
-        println!("moving {} to {}", from.to_str().unwrap(), to.to_str().unwrap());
         fs::rename(from, to).expect("error shifting file",);
       }
     }
-    tower_path.push(format!("floor_{}", i));
+    i -= 1;
   }
 }
 
@@ -71,3 +78,19 @@ fn belongs_to_tower(file_path: PathBuf) -> bool{
   }
 }
 
+fn destroy_the_tower(tower_path: PathBuf) {
+  println!("Be cautious, do you really want to eradicate the tower?");
+  println!("{} <--- (y/N)?", tower_path.to_str().unwrap());
+  let mut inp = String::new();
+  io::stdin().read_line(&mut inp).unwrap();
+  if inp.to_lowercase().trim() == "y" {
+    if let Ok(_) = fs::remove_dir_all(&tower_path) {
+      println!("The tower fades away leaving nothing but an empty meadow before you...")
+    } else {
+      println!("The tower rumbles and loses some of its items, but its weary stone walls stay tall before you.");
+      println!("Something could not be removed, use rm -rf or sudo rm -rf");
+    }
+  } else {
+    println!("You feel calm.")
+  }
+}
